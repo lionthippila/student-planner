@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KU Table — วางแผนตารางเรียน</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="app-header">
+  <div class="header-inner">
+    <div class="logo">
+      <span class="logo-icon">📅</span>
+      <span class="logo-text">KU Table</span>
+    </div>
+    <div class="header-subtitle">วางแผนตารางเรียน</div>
+    <div class="header-actions">
+      <button class="btn-outline btn-sm" onclick="clearPlanCourses()">🗑 ล้างทั้งหมด</button>
+      <button class="btn-outline btn-sm" onclick="exportPlan()">📋 คัดลอก</button>
+      <div class="export-group">
+        <button class="btn-outline btn-sm" id="export-btn" onclick="toggleExportMenu(event)">
+          ⬇ Export <span class="export-arrow">▾</span>
+        </button>
+        <div class="export-menu hidden" id="export-menu">
+          <button onclick="exportAsImage('png')">🖼 บันทึกเป็น PNG</button>
+          <button onclick="exportAsImage('pdf')">📄 บันทึกเป็น PDF</button>
+        </div>
+      </div>
+      <button class="btn-primary btn-sm" onclick="openAddModal()">+ เพิ่มวิชา</button>
+    </div>
+  </div>
+</header>
+
+<!-- HINT BAR -->
+<div class="hint-bar">
+  คลิกที่ช่องว่างในตารางเพื่อเพิ่มวิชา &nbsp;•&nbsp; ลากวิชาเพื่อย้ายวัน/เวลา &nbsp;•&nbsp; ดับเบิลคลิกเพื่อแก้ไข
+</div>
+
+<!-- TIMETABLE -->
+<div class="timetable-container">
+  <div id="plan-timetable"></div>
+</div>
+
+<!-- COURSE LIST -->
+<div class="course-list-section">
+  <h3 class="section-title">วิชาที่วางแผนไว้</h3>
+  <div id="plan-course-list" class="course-list"></div>
+</div>
+
+<!-- ADD/EDIT COURSE MODAL -->
+<div id="course-modal" class="modal-overlay hidden" onclick="closeModalOutside(event)">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3 id="modal-title">เพิ่มวิชา</h3>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <form class="modal-form" onsubmit="saveCourse(event)">
+      <div class="form-row">
+        <div class="form-group flex-1">
+          <label>รหัสวิชา</label>
+          <input type="text" id="f-code" placeholder="01418111" />
+        </div>
+        <div class="form-group flex-1">
+          <label>Section</label>
+          <input type="text" id="f-section" placeholder="450" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>ชื่อวิชา <span class="required">*</span></label>
+        <input type="text" id="f-name" placeholder="การโปรแกรมคอมพิวเตอร์" required />
+      </div>
+      <div class="form-group">
+        <label>ห้องเรียน</label>
+        <input type="text" id="f-room" placeholder="ST-108" />
+      </div>
+      <div class="form-row">
+        <div class="form-group flex-1">
+          <label>วัน <span class="required">*</span></label>
+          <select id="f-day" required onchange="onDayChange(this.value)">
+            <option value="">เลือกวัน</option>
+            <option value="1">จันทร์</option>
+            <option value="2">อังคาร</option>
+            <option value="3">พุธ</option>
+            <option value="4">พฤหัสบดี</option>
+            <option value="5">ศุกร์</option>
+            <option value="6">เสาร์</option>
+          </select>
+        </div>
+        <div class="form-group flex-1">
+          <label>เวลาเริ่ม <span class="required">*</span></label>
+          <select id="f-start" required></select>
+        </div>
+        <div class="form-group flex-1">
+          <label>เวลาสิ้นสุด <span class="required">*</span></label>
+          <select id="f-end" required></select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>สีวิชา</label>
+        <div class="color-picker" id="color-picker"></div>
+      </div>
+      <input type="hidden" id="f-id" />
+      <div class="modal-actions">
+        <button type="button" class="btn-outline" onclick="closeModal()">ยกเลิก</button>
+        <button type="submit" class="btn-primary">บันทึก</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- DELETE CONFIRM -->
+<div id="delete-modal" class="modal-overlay hidden" onclick="closeDeleteModal(event)">
+  <div class="modal-card modal-sm">
+    <div class="modal-header">
+      <h3>ลบวิชา</h3>
+      <button class="modal-close" onclick="closeDeleteModal()">✕</button>
+    </div>
+    <p class="delete-msg">ต้องการลบวิชา "<span id="delete-course-name"></span>" ออกหรือไม่?</p>
+    <div class="modal-actions">
+      <button class="btn-outline" onclick="closeDeleteModal()">ยกเลิก</button>
+      <button class="btn-danger" onclick="confirmDelete()">ลบ</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
