@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>KU Table — วางแผนตารางเรียน</title>
+  <title>Table — วางแผนตารางเรียน</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
@@ -39,7 +39,8 @@
 
 <!-- HINT BAR -->
 <div class="hint-bar">
-  คลิกที่ช่องว่างในตารางเพื่อเพิ่มวิชา &nbsp;•&nbsp; ลากวิชาเพื่อย้ายวัน/เวลา &nbsp;•&nbsp; ดับเบิลคลิกเพื่อแก้ไข
+  <span class="hint-desktop">คลิกที่ช่องว่างในตารางเพื่อเพิ่มวิชา &nbsp;•&nbsp; ลากวิชาเพื่อย้ายวัน/เวลา &nbsp;•&nbsp; ดับเบิลคลิกเพื่อแก้ไข</span>
+  <span class="hint-mobile">แตะช่องว่างเพื่อเพิ่มวิชา &nbsp;•&nbsp; กดค้างแล้วลากเพื่อย้าย &nbsp;•&nbsp; แตะสองครั้งเพื่อแก้ไข</span>
 </div>
 
 <!-- TIMETABLE -->
@@ -61,15 +62,13 @@
       <button class="modal-close" onclick="closeModal()">✕</button>
     </div>
     <form class="modal-form" onsubmit="saveCourse(event)">
-      <div class="form-row">
-        <div class="form-group flex-1">
-          <label>รหัสวิชา</label>
-          <input type="text" id="f-code" placeholder="01418111" />
-        </div>
-        <div class="form-group flex-1">
-          <label>Section</label>
-          <input type="text" id="f-section" placeholder="450" />
-        </div>
+      <div class="form-group">
+        <label>รหัสวิชา</label>
+        <input type="text" id="f-code" placeholder="01418111" />
+      </div>
+      <div class="form-group">
+        <label>Section</label>
+        <input type="text" id="f-section" placeholder="450" />
       </div>
       <div class="form-group">
         <label>ชื่อวิชา <span class="required">*</span></label>

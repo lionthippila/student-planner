@@ -26,6 +26,15 @@ let dragCourseId   = null;
 let dragOffsetSlot = 0;
 let visibleStart   = 0; // absolute slot of first visible column in plan mode
 
+// touch drag state
+let touchDragId    = null;
+let touchOffsetSlot = 0;
+let touchGhost     = null;
+let touchStartX    = 0;
+let touchStartY    = 0;
+let lastTapId      = null;
+let lastTapTime    = 0;
+
 // ---- HELPERS ----
 function timeToSlot(t) {
   const [h, m] = t.split(':').map(Number);
@@ -144,6 +153,8 @@ function attachPlanHEvents(el) {
     block.addEventListener('dragstart', onDragStart);
     block.addEventListener('dragend',   onDragEnd);
     block.addEventListener('dblclick',  () => openEditModal(block.dataset.id));
+    block.addEventListener('touchstart', onTouchDragStart, { passive: false });
+    block.addEventListener('touchend',   onTouchTap);
   });
 
   // drop targets — ph-cells rows
@@ -376,6 +387,112 @@ function confirmDelete() {
   renderPlanTimetable();
   renderCourseList('plan-course-list', planCourses, true);
 }
+
+// ---- TOUCH DRAG ----
+function onTouchDragStart(e) {
+  if (e.touches.length !== 1) return;
+  const block = e.currentTarget;
+  const touch = e.touches[0];
+  touchStartX = touch.clientX;
+  touchStartY = touch.clientY;
+  touchDragId = null; // start as null; activate after threshold move
+
+  // store potential drag info
+  block._touchPending = {
+    id: block.dataset.id,
+    offsetSlot: Math.floor((touch.clientX - block.getBoundingClientRect().left) / SLOT_W),
+  };
+}
+
+function onTouchTap(e) {
+  const block = e.currentTarget;
+  const id = block.dataset.id;
+  if (touchDragId !== null) return; // was dragging, not a tap
+  const now = Date.now();
+  if (now - lastTapTime < 350 && lastTapId === id) {
+    e.preventDefault();
+    openEditModal(id);
+    lastTapTime = 0; lastTapId = null;
+  } else {
+    lastTapTime = now; lastTapId = id;
+  }
+}
+
+document.addEventListener('touchmove', e => {
+  if (!e.target.closest('.ph-course') && touchDragId === null) return;
+
+  const touch = e.touches[0];
+  const dx = touch.clientX - touchStartX;
+  const dy = touch.clientY - touchStartY;
+
+  // Activate drag after moving 8px
+  if (touchDragId === null) {
+    const block = e.target.closest('.ph-course');
+    if (!block || !block._touchPending) return;
+    if (Math.hypot(dx, dy) < 8) return;
+
+    touchDragId = block._touchPending.id;
+    touchOffsetSlot = block._touchPending.offsetSlot;
+
+    // create ghost
+    const rect = block.getBoundingClientRect();
+    touchGhost = block.cloneNode(true);
+    touchGhost.style.cssText = `
+      position:fixed; pointer-events:none; z-index:9999;
+      opacity:0.75; border-radius:9px;
+      width:${rect.width}px; height:${rect.height}px;
+      top:${rect.top}px; left:${rect.left}px;
+      transition:none;
+    `;
+    document.body.appendChild(touchGhost);
+    block.style.opacity = '0.3';
+  }
+
+  if (touchDragId && touchGhost) {
+    const rect = touchGhost.getBoundingClientRect();
+    touchGhost.style.top  = (touch.clientY - rect.height / 2) + 'px';
+    touchGhost.style.left = (touch.clientX - rect.width  / 2) + 'px';
+  }
+
+  e.preventDefault();
+}, { passive: false });
+
+document.addEventListener('touchend', e => {
+  if (touchDragId === null) {
+    // clear pending
+    const block = e.target.closest('.ph-course');
+    if (block) block._touchPending = null;
+    return;
+  }
+
+  if (touchGhost) { touchGhost.remove(); touchGhost = null; }
+
+  const origBlock = document.getElementById('cb-' + touchDragId);
+  if (origBlock) origBlock.style.opacity = '';
+
+  const touch = e.changedTouches[0];
+  const cellsEl = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('.ph-cells');
+
+  if (cellsEl) {
+    const newDay = parseInt(cellsEl.dataset.day);
+    const rect = cellsEl.getBoundingClientRect();
+    let newStartSlot = Math.round((touch.clientX - rect.left) / SLOT_W) - touchOffsetSlot + visibleStart;
+
+    const course = planCourses.find(c => c.id === touchDragId);
+    if (course) {
+      const span = timeToSlot(course.endTime) - timeToSlot(course.startTime);
+      newStartSlot = Math.max(0, Math.min(newStartSlot, TOTAL_SLOTS - span));
+      course.day       = newDay;
+      course.startTime = slotToTime(newStartSlot);
+      course.endTime   = slotToTime(newStartSlot + span);
+      savePlanToStorage();
+      renderPlanTimetable();
+      renderCourseList('plan-course-list', planCourses, true);
+    }
+  }
+
+  touchDragId = null;
+});
 
 // ---- CLEAR ALL ----
 function clearPlanCourses() {
