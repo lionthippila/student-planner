@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Table — วางแผนตารางเรียน</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -21,6 +22,18 @@
     </div>
     <div class="header-subtitle">วางแผนตารางเรียน</div>
     <div class="header-actions">
+      <!-- THEME SWITCHER -->
+      <div class="theme-group" id="theme-group">
+        <button class="theme-btn" onclick="toggleThemePanel(event)" title="เปลี่ยนธีม">
+          <span class="theme-btn-dot" id="theme-btn-dot"></span>
+          <span id="theme-btn-label">ธีม</span>
+          <span style="font-size:9px;opacity:.6">▾</span>
+        </button>
+        <div class="theme-panel hidden" id="theme-panel">
+          <div class="theme-panel-title">เลือกธีม</div>
+          <div class="theme-options" id="theme-options"></div>
+        </div>
+      </div>
       <button class="btn-outline btn-sm" onclick="clearPlanCourses()">🗑 ล้างทั้งหมด</button>
       <button class="btn-outline btn-sm" onclick="exportPlan()">📋 คัดลอก</button>
       <div class="export-group">
@@ -28,11 +41,11 @@
           ⬇ Export <span class="export-arrow">▾</span>
         </button>
         <div class="export-menu hidden" id="export-menu">
-          <button onclick="exportAsImage('png')">🖼 บันทึกเป็น PNG</button>
-          <button onclick="exportAsImage('pdf')">📄 บันทึกเป็น PDF</button>
+          <button onclick="exportAsImage('png')">🖼&nbsp; บันทึกเป็น PNG</button>
+          <button onclick="exportAsImage('pdf')">📄&nbsp; บันทึกเป็น PDF</button>
         </div>
       </div>
-      <button class="btn-primary btn-sm" onclick="openAddModal()">+ เพิ่มวิชา</button>
+      <button class="btn-primary btn-sm" onclick="openAddModal()">＋ เพิ่มวิชา</button>
     </div>
   </div>
 </header>
@@ -128,6 +141,64 @@
   </div>
 </div>
 
+<script>
+/* ===== THEME ENGINE ===== */
+const THEMES = [
+  { id: 'purple',   name: 'Purple Mall', sub: 'มินิมอล', swatch: 'linear-gradient(135deg,#6c47ff,#9b6bff)' },
+  { id: 'midnight', name: 'Midnight',    sub: 'Dark Mode', swatch: 'linear-gradient(135deg,#1e1b4b,#6366f1)' },
+  { id: 'sakura',   name: 'Sakura',      sub: 'สีชมพู', swatch: 'linear-gradient(135deg,#e8639a,#f59bbf)' },
+  { id: 'ocean',    name: 'Ocean',        sub: 'ฟ้าใส', swatch: 'linear-gradient(135deg,#0ea5e9,#38bdf8)' },
+  { id: 'forest',   name: 'Forest',       sub: 'เขียวธรรมชาติ', swatch: 'linear-gradient(135deg,#16a34a,#4ade80)' },
+  { id: 'sunset',   name: 'Sunset',       sub: 'อบอุ่น', swatch: 'linear-gradient(135deg,#f97316,#fbbf24)' },
+];
+
+function applyTheme(id) {
+  document.documentElement.setAttribute('data-theme', id);
+  localStorage.setItem('ku-theme', id);
+  const t = THEMES.find(x => x.id === id);
+  if (!t) return;
+  const dot = document.getElementById('theme-btn-dot');
+  const lbl = document.getElementById('theme-btn-label');
+  if (dot) dot.style.background = t.swatch;
+  if (lbl) lbl.textContent = t.name;
+  document.querySelectorAll('.theme-option').forEach(el => {
+    el.classList.toggle('active', el.dataset.theme === id);
+  });
+}
+
+function buildThemePanel() {
+  const container = document.getElementById('theme-options');
+  if (!container) return;
+  container.innerHTML = THEMES.map(t => `
+    <div class="theme-option" data-theme="${t.id}" onclick="applyTheme('${t.id}');closeThemePanel()">
+      <div class="theme-swatch" style="background:${t.swatch}"></div>
+      <div>
+        <div class="theme-option-name">${t.name}</div>
+        <div class="theme-option-sub">${t.sub}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function toggleThemePanel(e) {
+  e.stopPropagation();
+  const panel = document.getElementById('theme-panel');
+  panel.classList.toggle('hidden');
+}
+function closeThemePanel() {
+  document.getElementById('theme-panel').classList.add('hidden');
+}
+
+document.addEventListener('click', e => {
+  if (!document.getElementById('theme-group').contains(e.target)) closeThemePanel();
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  buildThemePanel();
+  const saved = localStorage.getItem('ku-theme') || 'purple';
+  applyTheme(saved);
+});
+</script>
 <script src="app.js"></script>
 </body>
 </html>

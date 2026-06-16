@@ -542,10 +542,11 @@ async function exportAsImage(format) {
   try {
     await document.fonts.ready;
 
+    const exportBg = getComputedStyle(document.documentElement).getPropertyValue('--surface').trim() || '#ffffff';
     const canvas = await html2canvas(exportRoot, {
       scale: 2,
       useCORS: true,
-      backgroundColor: '#ffffff',
+      backgroundColor: exportBg,
       logging: false,
       scrollX: 0,
       scrollY: 0,
@@ -594,13 +595,34 @@ async function exportAsImage(format) {
   }
 }
 
+function getThemeColors() {
+  const cs = getComputedStyle(document.documentElement);
+  const v = name => cs.getPropertyValue(name).trim();
+  return {
+    bg:        v('--bg')        || '#f0eff8',
+    surface:   v('--surface')   || '#ffffff',
+    surface2:  v('--surface-2') || '#faf9ff',
+    border:    v('--border')    || '#e4e2f0',
+    border2:   v('--border-2')  || '#ccc9e3',
+    text:      v('--text')      || '#1a1635',
+    text2:     v('--text-2')    || '#3d3861',
+    textMuted: v('--text-muted')|| '#7b78a8',
+    textLight: v('--text-light')|| '#b5b2d4',
+    primary:   v('--primary')   || '#6c47ff',
+    rowEven:   v('--row-even')  || '#faf9ff',
+    headerBg:  v('--header-bg') || 'linear-gradient(to bottom,#faf9ff,#f3f1ff)',
+    dayLabelBg:v('--day-label-bg') || 'linear-gradient(to right,#faf9ff,#f6f3ff)',
+  };
+}
+
 function buildExportDOM() {
+  const T = getThemeColors();
   const { start, end } = getVisibleRange(planCourses);
   const visCount = end - start;
-  const SW = 72;   // slot width px in export
-  const RH = 80;   // row height px
-  const DW = 120;  // day label width px
-  const PAD = 32;  // container padding
+  const SW = 72;
+  const RH = 80;
+  const DW = 120;
+  const PAD = 32;
 
   const dateStr = new Date().toLocaleDateString('th-TH', { year:'numeric', month:'long', day:'numeric' });
   const uniqueCodes = [...new Set(planCourses.map(c => c.code).filter(Boolean))].length;
@@ -608,48 +630,49 @@ function buildExportDOM() {
   const wrap = document.createElement('div');
   wrap.style.cssText = `
     position:fixed; top:-9999px; left:-9999px;
-    background:#ffffff; padding:${PAD}px;
-    font-family:'Sarabun',sans-serif;
+    background:${T.surface}; padding:${PAD}px;
+    font-family:'Inter','Sarabun',sans-serif;
     width:${DW + visCount * SW + PAD * 2}px;
     box-sizing:border-box;
+    color:${T.text};
   `;
 
   // ── Title ──
   wrap.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:flex-end;
-                margin-bottom:20px;padding-bottom:14px;border-bottom:2.5px solid #e2e8f0;">
+                margin-bottom:20px;padding-bottom:14px;border-bottom:2.5px solid ${T.border2};">
       <div>
-        <div style="font-size:22px;font-weight:800;color:#0f172a;letter-spacing:-.4px;line-height:1.2">
+        <div style="font-size:22px;font-weight:800;color:${T.text};letter-spacing:-.4px;line-height:1.2">
           ตารางเรียนวางแผน
         </div>
-        <div style="font-size:12px;color:#64748b;margin-top:5px;font-weight:400">
+        <div style="font-size:12px;color:${T.textMuted};margin-top:5px;font-weight:400">
           สร้างเมื่อ ${dateStr}
         </div>
       </div>
-      <div style="text-align:right;font-size:13px;color:#475569;font-weight:600;line-height:1.7">
+      <div style="text-align:right;font-size:13px;color:${T.text2};font-weight:600;line-height:1.7">
         <div>${planCourses.length} รายการ</div>
-        <div style="color:#94a3b8;font-weight:400">${uniqueCodes} รหัสวิชา</div>
+        <div style="color:${T.textLight};font-weight:400">${uniqueCodes} รหัสวิชา</div>
       </div>
     </div>`;
 
   // ── Timetable ──
   const table = document.createElement('div');
   table.style.cssText = `
-    border:1.5px solid #cbd5e1; border-radius:12px;
+    border:1.5px solid ${T.border2}; border-radius:12px;
     overflow:hidden; font-size:12px;`;
 
   // header row
-  let head = `<div style="display:flex;background:#f1f5f9;border-bottom:2px solid #cbd5e1;">`;
-  head += `<div style="width:${DW}px;min-width:${DW}px;border-right:2px solid #cbd5e1;
-                        padding:10px 8px;font-size:11px;font-weight:600;color:#94a3b8;
+  let head = `<div style="display:flex;background:${T.surface2};border-bottom:2px solid ${T.border2};">`;
+  head += `<div style="width:${DW}px;min-width:${DW}px;border-right:2px solid ${T.border2};
+                        padding:10px 8px;font-size:11px;font-weight:600;color:${T.textLight};
                         display:flex;align-items:center;justify-content:center;">วัน / เวลา</div>`;
   for (let s = start; s < end; s++) {
     const isHour = s % 2 === 0;
     const label  = isHour ? slotToTime(s) : '';
-    const bl     = s === start ? 'none' : (isHour ? '1.5px solid #cbd5e1' : '1px dashed #dde3eb');
+    const bl     = s === start ? 'none' : (isHour ? `1.5px solid ${T.border2}` : `1px dashed ${T.border}`);
     head += `<div style="width:${SW}px;min-width:${SW}px;border-left:${bl};
                           padding:10px 0 10px 7px;font-size:12px;font-weight:${isHour?'700':'400'};
-                          color:#475569;white-space:nowrap;">${label}</div>`;
+                          color:${T.textMuted};white-space:nowrap;">${label}</div>`;
   }
   head += `</div>`;
   table.innerHTML = head;
@@ -658,34 +681,31 @@ function buildExportDOM() {
   for (let day = 1; day <= 6; day++) {
     const dayCourses = planCourses.filter(c => c.day === day);
     const accent = DAY_ACCENT[day - 1];
-    const bg = day % 2 === 0 ? '#fafbfd' : '#ffffff';
+    const bg = day % 2 === 0 ? T.rowEven : T.surface;
 
     const row = document.createElement('div');
-    row.style.cssText = `display:flex;border-bottom:1px solid #e2e8f0;
+    row.style.cssText = `display:flex;border-bottom:1px solid ${T.border};
                           min-height:${RH}px;background:${bg};position:relative;`;
     if (day === 6) row.style.borderBottom = 'none';
 
-    // day label
     row.innerHTML = `<div style="width:${DW}px;min-width:${DW}px;
-        border-right:2px solid #e2e8f0;border-left:4px solid ${accent};
+        border-right:2px solid ${T.border};border-left:4px solid ${accent};
         display:flex;flex-direction:column;align-items:center;justify-content:center;
         gap:3px;padding:8px;background:${bg};">
       <span style="font-size:20px;font-weight:900;color:${accent};line-height:1;">${DAYS_SHORT[day-1]}</span>
-      <span style="font-size:10px;color:#94a3b8;font-weight:500;">${DAYS_FULL[day-1]}</span>
+      <span style="font-size:10px;color:${T.textMuted};font-weight:500;">${DAYS_FULL[day-1]}</span>
     </div>`;
 
-    // cells area
     const cells = document.createElement('div');
     cells.style.cssText = `position:relative;display:flex;flex:1;`;
     for (let s = start; s < end; s++) {
       const isHour = s % 2 === 0;
-      const bl = s === start ? 'none' : (isHour ? '1.5px solid #e2e8f0' : '1px dashed #edf2f7');
+      const bl = s === start ? 'none' : (isHour ? `1.5px solid ${T.border}` : `1px dashed ${T.border}`);
       const cell = document.createElement('div');
       cell.style.cssText = `width:${SW}px;min-width:${SW}px;height:100%;min-height:${RH}px;border-left:${bl};`;
       cells.appendChild(cell);
     }
 
-    // course blocks
     dayCourses.forEach(c => {
       const ss   = timeToSlot(c.startTime);
       const span = timeToSlot(c.endTime) - ss;
@@ -700,18 +720,15 @@ function buildExportDOM() {
         overflow:hidden; display:flex; flex-direction:column; justify-content:center;
         box-sizing:border-box;
       `;
-      // lighten overlay stripe for visual depth (no rgba shadow)
-      const textColor = '#ffffff';
       block.innerHTML = `
-        <div style="font-size:13px;font-weight:800;color:${textColor};
+        <div style="font-size:13px;font-weight:800;color:#fff;
                     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
                     line-height:1.2;letter-spacing:-.2px;">${c.name}</div>
-        <div style="font-size:11px;color:${textColor};font-weight:500;margin-top:3px;
-                    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-                    opacity:0.9;">
+        <div style="font-size:11px;color:#fff;font-weight:500;margin-top:3px;
+                    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0.9;">
           ${[c.code, c.section?'#'+c.section:'', c.room].filter(Boolean).join(' · ')}
         </div>
-        <div style="font-size:11px;color:${textColor};margin-top:2px;
+        <div style="font-size:11px;color:#fff;margin-top:2px;
                     white-space:nowrap;opacity:0.85;">${c.startTime}–${c.endTime}</div>
       `;
       cells.appendChild(block);
@@ -732,11 +749,12 @@ function buildExportDOM() {
   unique.forEach(c => {
     const chip = document.createElement('div');
     chip.style.cssText = `display:flex;align-items:center;gap:7px;
-      background:#f8fafc;border:1px solid #e2e8f0;border-radius:20px;
+      background:${T.surface2};border:1px solid ${T.border};border-radius:20px;
       padding:5px 12px 5px 8px;font-size:12px;`;
-    chip.innerHTML = `<span style="width:10px;height:10px;border-radius:50%;background:${c.color};flex-shrink:0;display:inline-block;"></span>
-      <span style="color:#1e293b;font-weight:600;">${c.name}</span>
-      ${c.code?`<span style="color:#94a3b8;">${c.code}${c.section?' #'+c.section:''}</span>`:''}`;
+    chip.innerHTML = `
+      <span style="width:10px;height:10px;border-radius:50%;background:${c.color};flex-shrink:0;display:inline-block;"></span>
+      <span style="color:${T.text};font-weight:600;">${c.name}</span>
+      ${c.code?`<span style="color:${T.textLight};">${c.code}${c.section?' #'+c.section:''}</span>`:''}`;
     legend.appendChild(chip);
   });
 
